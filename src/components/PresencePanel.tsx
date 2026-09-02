@@ -34,12 +34,13 @@ export function PresencePanel(){
  const pending=admission?.status==='pending_user_approval'
  const admitted=admission?.status==='admitted'
  const paused=admission?.status==='paused'
+ const revoked=admission?.status==='revoked'
  const realWebMcp=s.connection.webmcp==='connected'
 
  return <aside className="w-[320px] border-l border-white/10 bg-[#0b0c10] p-4 flex flex-col gap-4">
   <div className="flex items-center justify-between"><div><div className="text-sm font-medium">Presence</div><div className="text-[10px] text-white/35">Agent admission</div></div><span className={`w-2 h-2 rounded-full ${admitted?'bg-emerald-400':pending?'bg-amber-300':detected?'bg-sky-300':paused?'bg-sky-300':'bg-white/20'}`}/></div>
 
-  {!admission&&<div className="rounded-xl border border-white/10 bg-white/[.03] p-4"><div className="flex items-center gap-2 text-sm font-medium"><UserPlus size={14} className="text-sky-300"/> No agent in this workspace</div><p className="mt-2 text-[11px] leading-5 text-white/50">Your browser agent can request a scoped role through WebMCP. Tablet stays unassigned until you approve.</p>{!realWebMcp&&<div className="mt-3 border-t border-white/10 pt-3"><div className="mb-2 text-[9px] font-medium tracking-[.12em] text-amber-200/70">DEVELOPMENT FALLBACK</div><button onClick={simulateRequest} className="secondary w-full"><Play size={13}/> Simulate admission request</button></div>}</div>}
+  {(!admission||revoked)&&<div className="rounded-xl border border-white/10 bg-white/[.03] p-4"><div className="flex items-center gap-2 text-sm font-medium"><UserPlus size={14} className="text-sky-300"/> No agent in this workspace</div><p className="mt-2 text-[11px] leading-5 text-white/50">{revoked?'Agent removed. Tablet is unassigned again and no further agent operations are authorized.':'Your browser agent can request a scoped role through WebMCP. Tablet stays unassigned until you approve.'}</p>{!realWebMcp&&<div className="mt-3 border-t border-white/10 pt-3"><div className="mb-2 text-[9px] font-medium tracking-[.12em] text-amber-200/70">DEVELOPMENT FALLBACK</div><button onClick={simulateRequest} className="secondary w-full"><Play size={13}/> Simulate admission request</button></div>}</div>}
 
   {detected&&<div className="rounded-xl border border-sky-400/20 bg-sky-400/[.05] p-4"><div className="flex items-center gap-2 text-sm font-medium"><Radar size={14} className="text-sky-300"/> Agent detected</div><p className="mt-2 text-[11px] leading-5 text-white/50">Your browser agent called <span className="font-mono text-sky-200">inspect_presence</span> and is viewing the roles this workspace exposes.</p><div className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] text-white/40">No permissions granted · Tablet remains unassigned</div></div>}
 
