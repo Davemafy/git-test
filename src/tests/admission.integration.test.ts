@@ -59,18 +59,18 @@ describe('Presence flagship admission journey',()=>{
 
   usePresenceStore.getState().claimSurface('tablet','human','edit')
   s=usePresenceStore.getState()
-  const humanTablet=s.mutate({actorId:'human',actorType:'human',label:'You centered Tablet Hero',change:{componentId:'hero',breakpoint:'tablet',patch:{align:'center'}}})
+  const humanTablet=s.mutate({actorId:'human',actorType:'human',label:'You changed Tablet Hero alignment',change:{componentId:'hero',breakpoint:'tablet',patch:{align:'end'}}})
   expect(humanTablet.ok).toBe(true)
 
   const accept=usePresenceStore.getState().acceptProposal(proposalId)
   expect(accept.ok).toBe(false)
   expect(usePresenceStore.getState().proposals.find(p=>p.id===proposalId)?.status).toBe('conflicted')
-  expect(usePresenceStore.getState().conflicts[0]?.human).toBe('center')
+  expect(usePresenceStore.getState().conflicts[0]?.human).toBe('end')
 
   expect(usePresenceStore.getState().resolveConflict(proposalId,0,'human').ok).toBe(true)
   expect(usePresenceStore.getState().acceptProposal(proposalId).ok).toBe(true)
   s=usePresenceStore.getState()
-  expect(s.project.nodes.hero.responsive.tablet?.align).toBe('center')
+  expect(s.project.nodes.hero.responsive.tablet?.align).toBe('end')
   expect(s.project.nodes.hero.responsive.tablet?.gap).toBe(20)
  })
 })
