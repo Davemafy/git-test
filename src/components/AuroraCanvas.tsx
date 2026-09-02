@@ -1,10 +1,10 @@
+import { Check, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { usePresenceStore } from '../domain/store'
 import type { Breakpoint, ComponentNode, Project, Proposal } from '../domain/types'
 
-const size:Record<Breakpoint,string>={desktop:'min-w-[390px]',tablet:'min-w-[300px]',mobile:'min-w-[220px]'}
-const labels:Record<Breakpoint,string>={desktop:'DESKTOP · 1200',tablet:'TABLET · 768',mobile:'MOBILE · 375'}
-const agentTargets:Record<string,{x:number;y:number}>={header:{x:232,y:62},headline:{x:74,y:174},hero:{x:118,y:238},heroMedia:{x:224,y:270},features:{x:160,y:475}}
+const labels:Record<Breakpoint,string>={desktop:'Desktop',tablet:'Tablet',mobile:'Mobile'}
+const agentTargets:Record<string,{x:number;y:number}>={header:{x:216,y:56},headline:{x:72,y:162},hero:{x:116,y:228},heroMedia:{x:218,y:258},features:{x:150,y:458}}
 
 function merged(node:ComponentNode,breakpoint:Breakpoint,proposal?:Proposal){
  const patch=proposal?.operations
@@ -14,7 +14,8 @@ function merged(node:ComponentNode,breakpoint:Breakpoint,proposal?:Proposal){
 }
 
 export function AuroraCanvas({breakpoint,project}:{breakpoint:Breakpoint;project:Project}){
- const {selection,setSelection,proposals,connection,assignments}=usePresenceStore()
+ const s=usePresenceStore()
+ const {selection,setSelection,proposals,connection,assignments}=s
  const proposal=proposals.find(item=>item.breakpoint===breakpoint&&['working','ready','conflicted'].includes(item.status))
  const selected=selection.breakpoint===breakpoint?selection.componentId:undefined
  const props=(id:string)=>merged(project.nodes[id],breakpoint,proposal)
@@ -26,6 +27,9 @@ export function AuroraCanvas({breakpoint,project}:{breakpoint:Breakpoint;project
  const media=props('heroMedia')
  const splitHero=hero.display==='grid'&&hero.gridColumns===2
  const agentAssigned=assignments.some(a=>a.breakpoint==='tablet'&&a.participantId==='agent'&&a.mode==='propose')
+ const admission=s.admissions.at(-1)
+ const pending=breakpoint==='tablet'&&admission?.status==='pending_user_approval'
+ const paused=breakpoint==='tablet'&&admission?.status==='paused'
  const showAgent=breakpoint==='tablet'&&connection.agent==='working'&&agentAssigned
  const showHuman=breakpoint==='mobile'
  const ownerLabel=breakpoint==='desktop'?'REFERENCE':breakpoint==='mobile'?'YOU':agentAssigned?'YOUR AGENT':'UNASSIGNED'
@@ -33,13 +37,16 @@ export function AuroraCanvas({breakpoint,project}:{breakpoint:Breakpoint;project
  const cursor=agentTargets[latestAgentTarget]??agentTargets.hero
 
  return (
-  <section className={`relative ${size[breakpoint]} flex-1 overflow-hidden rounded-xl border bg-[#111218] shadow-2xl shadow-black/30 ${proposal?'border-sky-500/55':'border-white/10'}`}>
-   <div className="flex h-9 items-center justify-between border-b border-white/10 px-3 text-[10px] tracking-[.13em] text-white/50">
-    <span>{labels[breakpoint]}</span>
-    <motion.span layout className={ownerLabel==='YOUR AGENT'?'text-sky-300':ownerLabel==='YOU'?'text-violet-300':''}>{ownerLabel}</motion.span>
+  <section className={`device-surface device-surface--${breakpoint} ${agentAssigned&&breakpoint==='tablet'?'is-agent-owned':''} ${pending?'is-requested':''}`}>
+   <div className="surface-header">
+    <div>
+     <div className="surface-name">{labels[breakpoint]}</div>
+     <motion.div layout className={`surface-owner ${ownerLabel==='YOUR AGENT'?'is-agent':ownerLabel==='YOU'?'is-human':''}`}>{ownerLabel}</motion.div>
+    </div>
+    <div className="surface-meta">{breakpoint==='desktop'?'1440':breakpoint==='tablet'?'768':'390'} px</div>
    </div>
 
-   <div className="relative h-[600px] select-none overflow-hidden bg-[#f2f0e9] text-[#111]">
+   <div className="surface-preview">
     <div onClick={()=>choose('header')} className={`flex items-center justify-between border-b border-black/10 px-4 py-3 ${selected==='header'?'ring-2 ring-inset ring-violet-500':''}`}>
      <div className="text-[11px] font-black tracking-[.18em]">AURORA</div>
      <div className="hidden text-[9px] opacity-60 md:block">Product &nbsp; Solutions &nbsp; Pricing</div>
@@ -49,7 +56,7 @@ export function AuroraCanvas({breakpoint,project}:{breakpoint:Breakpoint;project
     <div onClick={()=>choose('hero')} style={{padding:hero.padding??24,gap:hero.gap??22}} className={`${splitHero?'grid grid-cols-2':'flex flex-col'} min-h-[285px] items-center ${selected==='hero'?'ring-2 ring-inset ring-violet-500':''}`}>
      <div className="w-full">
       <div className="mb-3 text-[9px] uppercase tracking-[.16em] opacity-55">A calmer way to build</div>
-      <h1 onClick={event=>{event.stopPropagation();choose('headline')}} style={{fontSize:Math.max(20,Math.min(52,headline.fontSize??34)),lineHeight:headline.lineHeight??1.05,textAlign:headline.textAlign}} className={`max-w-[480px] font-semibold tracking-[-.045em] ${selected==='headline'?'outline outline-2 outline-violet-500':''}`}>Your product team, finally in the same orbit.</h1>
+      <h2 onClick={event=>{event.stopPropagation();choose('headline')}} style={{fontSize:Math.max(20,Math.min(52,headline.fontSize??34)),lineHeight:headline.lineHeight??1.05,textAlign:headline.textAlign}} className={`max-w-[480px] font-semibold tracking-[-.045em] ${selected==='headline'?'outline outline-2 outline-violet-500':''}`}>Your product team, finally in the same orbit.</h2>
       <p className="mt-3 max-w-[430px] text-[11px] leading-5 opacity-65">Aurora keeps ideas, decisions and momentum together so your team can ship with less drag.</p>
       <div style={{gap:actions.gap??10}} className={`mt-4 flex ${actions.direction==='column'?'flex-col':'flex-row'}`}>
        <button style={{width:primary.width==='full'?'100%':'auto'}} className="h-10 rounded-lg bg-[#6d51ff] px-4 text-[10px] text-white">Start building</button>
@@ -71,21 +78,32 @@ export function AuroraCanvas({breakpoint,project}:{breakpoint:Breakpoint;project
     <div className="border-y border-black/10 px-4 py-3 text-[8px] tracking-[.16em] opacity-50">NORTHSTAR &nbsp; WAVELINE &nbsp; TIDE &nbsp; FOUNDRY</div>
     <div className={`grid gap-2 p-4 ${breakpoint==='desktop'?'grid-cols-3':breakpoint==='tablet'?'grid-cols-2':'grid-cols-1'}`}><Feature title="Focus"/><Feature title="Momentum"/><Feature title="Signal"/></div>
 
+    {pending&&admission&&<motion.div className="admission-seat" initial={{opacity:0,y:16,scale:.98}} animate={{opacity:1,y:0,scale:1}} transition={{duration:.28,ease:[.16,1,.3,1]}}>
+     <div className="admission-eyebrow">YOUR BROWSER AGENT</div>
+     <div className="admission-title">Wants to join</div>
+     <div className="admission-role">Responsive collaborator</div>
+     <div className="admission-scope">Tablet · Propose only</div>
+     <p>“{admission.reason}”</p>
+     <div className="admission-permissions"><span>Can read all breakpoints and propose Tablet changes.</span><span>Cannot change Desktop, Mobile, publish, or commit its own work.</span></div>
+     <div className="admission-actions"><button onClick={()=>s.denyAdmission(admission.id)} className="seat-secondary"><X size={13}/> Not now</button><button onClick={()=>s.approveAdmission(admission.id)} className="seat-primary"><Check size={13}/> Admit agent</button></div>
+    </motion.div>}
+
     {showAgent&&(
-     <motion.div initial={{opacity:0,scale:.7,x:280,y:24}} animate={{opacity:1,scale:1,x:cursor.x,y:cursor.y}} transition={{type:'spring',stiffness:320,damping:28}} className="pointer-events-none absolute left-0 top-0 z-20">
-      <svg width="18" height="22" viewBox="0 0 18 22" fill="none" className="drop-shadow"><path d="M2 1.5L16 12.5L9.3 13.2L6.1 20.1L2 1.5Z" fill="#0EA5E9" stroke="white" strokeWidth="1.2"/></svg>
-      <div className="ml-3 -mt-1 whitespace-nowrap rounded-md bg-sky-500 px-2 py-1 text-[9px] font-semibold text-white shadow-lg">YOUR AGENT · {project.nodes[latestAgentTarget]?.name??'Tablet'}</div>
+     <motion.div initial={{opacity:0,scale:.92,x:300,y:38}} animate={{opacity:1,scale:1,x:cursor.x,y:cursor.y}} transition={{duration:.42,ease:[.16,1,.3,1]}} className="agent-cursor">
+      <svg width="18" height="22" viewBox="0 0 18 22" fill="none"><path d="M2 1.5L16 12.5L9.3 13.2L6.1 20.1L2 1.5Z" fill="currentColor" stroke="white" strokeWidth="1.2"/></svg>
+      <div className="cursor-label">YOUR AGENT · {project.nodes[latestAgentTarget]?.name??'Tablet'}</div>
      </motion.div>
     )}
 
     {showHuman&&(
-     <motion.div initial={{opacity:0,scale:.9}} animate={{opacity:1,scale:1}} className="pointer-events-none absolute left-8 top-60 z-20">
-      <svg width="18" height="22" viewBox="0 0 18 22" fill="none"><path d="M2 1.5L16 12.5L9.3 13.2L6.1 20.1L2 1.5Z" fill="#8B5CF6" stroke="white" strokeWidth="1.2"/></svg>
-      <div className="ml-3 -mt-1 rounded-md bg-violet-500 px-2 py-1 text-[9px] font-semibold text-white shadow-lg">YOU</div>
+     <motion.div initial={{opacity:0}} animate={{opacity:1}} className="human-cursor">
+      <svg width="18" height="22" viewBox="0 0 18 22" fill="none"><path d="M2 1.5L16 12.5L9.3 13.2L6.1 20.1L2 1.5Z" fill="currentColor" stroke="white" strokeWidth="1.2"/></svg>
+      <div className="cursor-label">YOU</div>
      </motion.div>
     )}
 
-    {breakpoint==='tablet'&&!agentAssigned&&<div className="pointer-events-none absolute inset-x-4 bottom-4 rounded-lg border border-dashed border-black/15 bg-white/55 px-3 py-2 text-center text-[9px] font-medium tracking-[.12em] text-black/40">WAITING FOR A COLLABORATOR</div>}
+    {breakpoint==='tablet'&&s.staleBanner&&agentAssigned&&<div className="catchup-overlay"><div className="catchup-kicker">PROJECT CHANGED</div><div className="catchup-title">Catching up…</div><div className="catchup-copy">Your agent is re-reading the latest project before it continues.</div></div>}
+    {paused&&agentAssigned&&<div className="paused-chip">AGENT PAUSED</div>}
    </div>
   </section>
  )
