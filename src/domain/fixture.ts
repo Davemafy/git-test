@@ -1,4 +1,4 @@
-import type { Constraint, Participant, Project, SharedGoal, SurfaceAssignment } from './types'
+import type { AgentRole, Capability, Constraint, Participant, Project, SharedGoal, SurfaceAssignment } from './types'
 
 export const makeAuroraProject = ():Project => ({
   id:'aurora', name:'Aurora Landing Page', rootId:'page', nodes:{
@@ -27,14 +27,25 @@ export const makeAuroraProject = ():Project => ({
 })
 
 export const defaultGoal:SharedGoal={id:'goal-responsive',description:'Create a responsive landing page that works beautifully across desktop, tablet and mobile while preserving content hierarchy and visual character.',status:'active',revision:1}
-export const participants:Participant[]=[
-  {id:'human',name:'You',type:'human',color:'violet',status:'working',breakpoint:'mobile'},
-  {id:'agent',name:'Presence',type:'agent',color:'blue',status:'idle',breakpoint:'tablet'}
-]
+export const participants:Participant[]=[{id:'human',name:'You',type:'human',color:'violet',status:'working',breakpoint:'mobile'}]
 export const assignments:SurfaceAssignment[]=[
   {breakpoint:'desktop',participantId:'human',mode:'read'},
-  {breakpoint:'mobile',participantId:'human',mode:'edit'},
-  {breakpoint:'tablet',participantId:'agent',mode:'propose'}
+  {breakpoint:'mobile',participantId:'human',mode:'edit'}
+]
+export const roles:AgentRole[]=[{
+  id:'responsive-collaborator',name:'Responsive collaborator',description:'Can inspect responsive project state and propose changes on one assigned breakpoint.',
+  defaultScopes:[
+    {resource:'breakpoint',id:'desktop',mode:'inspect'},
+    {resource:'breakpoint',id:'tablet',mode:'inspect'},
+    {resource:'breakpoint',id:'mobile',mode:'inspect'},
+    {resource:'breakpoint',id:'tablet',mode:'propose'}
+  ]
+}]
+export const capabilities:Capability[]=[
+  {id:'inspect_presence',name:'Inspect Presence',description:'Inspect current app and admission state.',mode:'inspect',resource:'project',requiresApproval:false},
+  {id:'inspect_project',name:'Inspect project',description:'Inspect project state.',mode:'inspect',resource:'project',requiresApproval:false},
+  {id:'inspect_breakpoint',name:'Inspect breakpoint',description:'Inspect a responsive surface.',mode:'inspect',resource:'breakpoint',requiresApproval:false},
+  {id:'propose_layout_change',name:'Propose layout change',description:'Propose structured changes on an assigned breakpoint.',mode:'propose',resource:'breakpoint',requiresApproval:true}
 ]
 export const constraints:Constraint[]=[
   {id:'copy',type:'preserve-copy',label:'Preserve canonical copy',enabled:true},
