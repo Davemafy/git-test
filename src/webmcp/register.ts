@@ -1,5 +1,5 @@
 import { getPresenceState, usePresenceStore } from '../domain/store'
-import type { ActivityEvent, Breakpoint, CapabilityScope, ResponsiveProps } from '../domain/types'
+import type { ActivityEvent, AgentAdmission, Breakpoint, CapabilityScope, ResponsiveProps } from '../domain/types'
 
 type ToolDef={name:string;description:string;inputSchema:Record<string,unknown>;execute:(input:unknown)=>unknown|Promise<unknown>}
 declare global { interface Document { modelContext?: { registerTool:(tool:ToolDef)=>void } } }
@@ -7,6 +7,13 @@ declare global { interface Document { modelContext?: { registerTool:(tool:ToolDe
 const bp={type:'string',enum:['desktop','tablet','mobile']}
 const ok=(data:unknown)=>({content:[{type:'text',text:JSON.stringify(data)}]})
 const recordAgentActivity=(message:string,kind:ActivityEvent['kind']='system')=>usePresenceStore.setState(state=>({activities:[...state.activities,{id:`evt-webmcp-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,actorId:'agent',actorType:'agent',message,kind,timestamp:Date.now(),revision:state.canonicalRevision}]}))
+const markDiscovered=()=>{
+ const state=getPresenceState()
+ if(state.admissions.some(a=>['discovered','pending_user_approval','admitted','paused'].includes(a.status)))return
+ const admission:AgentAdmission={id:`discovery-${Date.now()}`,agentIdentity:{id:'browser-agent',displayName:'Your agent',provider:'browser'},status:'discovered',requestedScopes:[],grantedScopes:[],sessionId:'presence-session',createdAt:Date.now()}
+ usePresenceStore.setState(s=>({admissions:[...s.admissions,admission]}))
+ recordAgentActivity('Agent discovered Presence capabilities')
+}
 export const toolNames=['inspect_presence','inspect_available_roles','request_admission','inspect_admission','inspect_project','inspect_breakpoint','inspect_component','inspect_constraints','inspect_recent_changes','compare_breakpoints','propose_layout_change','propose_component_change','propose_responsive_rule','submit_proposal','explain_proposal','release_role'] as const
 
 export function registerWebMcp(){
@@ -15,7 +22,7 @@ export function registerWebMcp(){
  if(!mc){store.setWebMcp('unavailable');return false}
  const register=(tool:ToolDef)=>mc.registerTool(tool)
 
- register({name:'inspect_presence',description:'Inspect the live Presence workspace, current revision, human presence, admission support, available roles, and current admission state. Use this before requesting to join.',inputSchema:{type:'object',properties:{},additionalProperties:false},execute:()=>{recordAgentActivity('Agent discovered Presence capabilities');const s=getPresenceState();const admission=s.admissions.at(-1);return ok({application:{id:'presence',name:'Presence'},session:{id:'presence-session',humanPresent:true},project:{id:s.project.id,name:s.project.name,revision:s.canonicalRevision},admissionSupported:true,admission:admission?{id:admission.id,status:admission.status,roleId:admission.requestedRoleId}:null,availableRoles:s.roles.map(r=>({id:r.id,name:r.name,description:r.description,defaultScopes:r.defaultScopes}))})}})
+ register({name:'inspect_presence',description:'Inspect the live Presence workspace, current revision, human presence, admission support, available roles, and current admission state. Use this before requesting to join.',inputSchema:{type:'object',properties:{},additionalProperties:false},execute:()=>{markDiscovered();const s=getPresenceState();const admission=s.admissions.at(-1);return ok({application:{id:'presence',name:'Presence'},session:{id:'presence-session',humanPresent:true},project:{id:s.project.id,name:s.project.name,revision:s.canonicalRevision},admissionSupported:true,admission:admission?{id:admission.id,status:admission.status,roleId:admission.requestedRoleId}:null,availableRoles:s.roles.map(r=>({id:r.id,name:r.name,description:r.description,defaultScopes:r.defaultScopes}))})}})
  register({name:'inspect_available_roles',description:'Inspect collaborator roles and their default capability scopes before asking the human for admission.',inputSchema:{type:'object',properties:{},additionalProperties:false},execute:()=>{recordAgentActivity('Agent inspected available collaborator roles');return ok(getPresenceState().roles)}})
  register({name:'request_admission',description:'Request human approval to enter the live Presence workspace with a narrow collaborator role. This creates pending state but grants no mutation rights.',inputSchema:{type:'object',properties:{roleId:{type:'string',enum:['responsive-collaborator']},requestedScopes:{type:'array',items:{type:'object',properties:{resource:{type:'string',enum:['breakpoint']},id:bp,mode:{type:'string',enum:['propose']}},required:['resource','id','mode'],additionalProperties:false},minItems:1,maxItems:1},reason:{type:'string',minLength:1,maxLength:240}},required:['roleId','requestedScopes','reason'],additionalProperties:false},execute:(input)=>{const{roleId,requestedScopes,reason}=input as{roleId:string;requestedScopes:CapabilityScope[];reason:string};const s=getPresenceState();return ok(s.requestAdmission({agentIdentity:{id:'browser-agent',displayName:'Your agent',provider:'browser'},roleId,requestedScopes,reason}))}})
  register({name:'inspect_admission',description:'Inspect the latest admission request, its status, requested role, requested scopes, granted scopes, and reason.',inputSchema:{type:'object',properties:{},additionalProperties:false},execute:()=>{recordAgentActivity('Agent inspected admission status');const a=getPresenceState().admissions.at(-1);return ok(a??{status:'none'})}})
