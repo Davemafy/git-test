@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Check, Circle, Pause, Play, ShieldCheck, UserPlus, X } from 'lucide-react'
+import { Check, Circle, Pause, Play, Radar, ShieldCheck, UserPlus, X } from 'lucide-react'
 import { usePresenceStore } from '../domain/store'
 
 export function PresencePanel(){
@@ -30,15 +30,18 @@ export function PresencePanel(){
   },delay)))
  }
 
+ const detected=admission?.status==='discovered'
  const pending=admission?.status==='pending_user_approval'
  const admitted=admission?.status==='admitted'
  const paused=admission?.status==='paused'
  const realWebMcp=s.connection.webmcp==='connected'
 
  return <aside className="w-[320px] border-l border-white/10 bg-[#0b0c10] p-4 flex flex-col gap-4">
-  <div className="flex items-center justify-between"><div><div className="text-sm font-medium">Presence</div><div className="text-[10px] text-white/35">Agent admission</div></div><span className={`w-2 h-2 rounded-full ${admitted?'bg-emerald-400':pending?'bg-amber-300':paused?'bg-sky-300':'bg-white/20'}`}/></div>
+  <div className="flex items-center justify-between"><div><div className="text-sm font-medium">Presence</div><div className="text-[10px] text-white/35">Agent admission</div></div><span className={`w-2 h-2 rounded-full ${admitted?'bg-emerald-400':pending?'bg-amber-300':detected?'bg-sky-300':paused?'bg-sky-300':'bg-white/20'}`}/></div>
 
   {!admission&&<div className="rounded-xl border border-white/10 bg-white/[.03] p-4"><div className="flex items-center gap-2 text-sm font-medium"><UserPlus size={14} className="text-sky-300"/> No agent in this workspace</div><p className="mt-2 text-[11px] leading-5 text-white/50">Your browser agent can request a scoped role through WebMCP. Tablet stays unassigned until you approve.</p>{!realWebMcp&&<div className="mt-3 border-t border-white/10 pt-3"><div className="mb-2 text-[9px] font-medium tracking-[.12em] text-amber-200/70">DEVELOPMENT FALLBACK</div><button onClick={simulateRequest} className="secondary w-full"><Play size={13}/> Simulate admission request</button></div>}</div>}
+
+  {detected&&<div className="rounded-xl border border-sky-400/20 bg-sky-400/[.05] p-4"><div className="flex items-center gap-2 text-sm font-medium"><Radar size={14} className="text-sky-300"/> Agent detected</div><p className="mt-2 text-[11px] leading-5 text-white/50">Your browser agent called <span className="font-mono text-sky-200">inspect_presence</span> and is viewing the roles this workspace exposes.</p><div className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] text-white/40">No permissions granted · Tablet remains unassigned</div></div>}
 
   {pending&&<div className="rounded-xl border border-sky-400/30 bg-sky-400/[.07] p-4"><div className="flex items-center gap-2 text-sm font-medium"><ShieldCheck size={14} className="text-sky-300"/> Your agent wants to join</div><div className="mt-3 space-y-2 text-[11px] text-white/65"><div><span className="text-white/35">Role</span><br/>Responsive collaborator</div><div><span className="text-white/35">Requested access</span><br/>{admission.requestedScopes.map(scope=>`${scope.id??scope.resource} · ${scope.mode}`).join(', ')}</div><div className="border-t border-white/10 pt-2"><span className="text-emerald-300">✓</span> Inspect Desktop, Tablet, Mobile<br/><span className="text-emerald-300">✓</span> Propose Tablet changes<br/><span className="text-rose-300">×</span> Modify Desktop or Mobile<br/><span className="text-rose-300">×</span> Publish or change canonical copy</div><p className="italic text-white/50">“{admission.reason}”</p></div><div className="mt-4 grid grid-cols-2 gap-2"><button onClick={()=>s.denyAdmission(admission.id)} className="secondary"><X size={13}/> Not now</button><button onClick={()=>s.approveAdmission(admission.id)} className="primary"><Check size={13}/> Admit agent</button></div></div>}
 
