@@ -37,5 +37,5 @@ test('flagship admission journey is understandable through the UI', async ({ pag
   await expect(page.getByText('Tablet changes accepted')).toBeVisible()
   await page.getByRole('button', { name: 'Remove agent' }).click()
   await expect(page.getByText('Tablet · Unassigned')).toBeVisible()
-  await expect(page.getByText('No agent admitted')).toBeVisible()
+  await expect(page.getByText('No agent in this workspace')).toBeVisible()
 })
