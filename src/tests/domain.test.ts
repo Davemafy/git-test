@@ -1,0 +1,20 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { usePresenceStore } from '../domain/store'
+
+const mobile=(componentId:string,patch:Record<string,unknown>)=>usePresenceStore.getState().mutate({actorId:'human',actorType:'human',label:'human edit',change:{componentId,breakpoint:'mobile',patch}} as never)
+const agent=(componentId:string,patch:Record<string,unknown>,expectedRevision:number)=>usePresenceStore.getState().mutate({actorId:'agent',actorType:'agent',label:'agent edit',change:{componentId,breakpoint:'tablet',patch},expectedRevision,provisional:true} as never)
+
+describe('Presence domain',()=>{
+ beforeEach(()=>{localStorage.clear();usePresenceStore.getState().resetDemo()})
+ it('human mutation increments revision',()=>{const r=mobile('hero',{padding:24});expect(r.ok).toBe(true);expect(usePresenceStore.getState().canonicalRevision).toBe(2)})
+ it('valid agent mutation creates provisional proposal without canonical mutation',()=>{const s=usePresenceStore.getState();const r=agent('hero',{gap:20},s.canonicalRevision);expect(r.ok).toBe(true);expect(usePresenceStore.getState().canonicalRevision).toBe(1);expect(usePresenceStore.getState().proposals).toHaveLength(1)})
+ it('stale agent mutation fails and does not alter canonical state',()=>{const rev=usePresenceStore.getState().canonicalRevision;mobile('hero',{padding:30});const r=agent('hero',{gap:17},rev);expect(r.ok).toBe(false);if(!r.ok)expect(r.error).toBe('STALE_STATE');expect(usePresenceStore.getState().project.nodes.hero.responsive.tablet?.gap).toBe(28)})
+ it('agent cannot mutate mobile',()=>{const s=usePresenceStore.getState();const r=s.mutate({actorId:'agent',actorType:'agent',label:'bad',change:{componentId:'hero',breakpoint:'mobile',patch:{gap:10}},expectedRevision:s.canonicalRevision,provisional:true});expect(r.ok).toBe(false)})
+ it('human can take over tablet and agent loses permission',()=>{const s=usePresenceStore.getState();s.claimSurface('tablet','human','edit');const r=usePresenceStore.getState().mutate({actorId:'agent',actorType:'agent',label:'bad',change:{componentId:'hero',breakpoint:'tablet',patch:{gap:10}},expectedRevision:s.canonicalRevision,provisional:true});expect(r.ok).toBe(false)})
+ it('constraint blocks undersized body text',()=>{const r=mobile('body',{fontSize:12});expect(r.ok).toBe(false);if(!r.ok)expect(r.error).toBe('CONSTRAINT_VIOLATION')})
+ it('accepting proposal applies it and rejecting does not',()=>{let s=usePresenceStore.getState();agent('hero',{gap:19},s.canonicalRevision);s=usePresenceStore.getState();const id=s.proposals[0].id;expect(s.project.nodes.hero.responsive.tablet?.gap).toBe(28);s.acceptProposal(id);expect(usePresenceStore.getState().project.nodes.hero.responsive.tablet?.gap).toBe(19);const rev=usePresenceStore.getState().canonicalRevision;agent('headline',{fontSize:45},rev);s=usePresenceStore.getState();const p=s.proposals.find(x=>x.status==='working')!;s.rejectProposal(p.id);expect(usePresenceStore.getState().project.nodes.headline.responsive.tablet?.fontSize).toBe(38)})
+ it('undo restores previous state',()=>{mobile('hero',{padding:31});expect(usePresenceStore.getState().project.nodes.hero.responsive.mobile?.padding).toBe(31);usePresenceStore.getState().undo();expect(usePresenceStore.getState().project.nodes.hero.responsive.mobile?.padding).toBe(22)})
+ it('activity reflects real operations',()=>{mobile('hero',{gap:18});expect(usePresenceStore.getState().activities.at(-1)?.message).toBe('human edit')})
+ it('desktop remains protected',()=>{const s=usePresenceStore.getState();const r=s.mutate({actorId:'human',actorType:'human',label:'desktop edit',change:{componentId:'hero',breakpoint:'desktop',patch:{gap:1}}});expect(r.ok).toBe(false);expect(usePresenceStore.getState().project.nodes.hero.responsive.desktop?.gap).toBe(56)})
+ it('reset restores Aurora',()=>{mobile('hero',{padding:40});usePresenceStore.getState().resetDemo();expect(usePresenceStore.getState().canonicalRevision).toBe(1);expect(usePresenceStore.getState().project.name).toBe('Aurora Landing Page')})
+})
