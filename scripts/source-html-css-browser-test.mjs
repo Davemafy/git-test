@@ -52,7 +52,7 @@ try{
    assert.equal(info.stylesheetCoverage.cssDiscovered>=2,true);
    const html=await fs.readFile(path.join(out,'replay.html'),'utf8');
    assert.ok(!/<script\b/i.test(html));
-   assert.match(html,/display:\\s*grid/);
+   assert.match(html,/display:\s*grid/);
    assert.ok(!html.includes('data-slp-css-index'));
    const preview=await ctx.newPage();await preview.goto('file://'+path.join(out,'replay.html'),{waitUntil:'load'});
    const replay=await preview.screenshot({type:'png',animations:'disabled'});
