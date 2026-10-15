@@ -40,7 +40,7 @@ try{
   await ctx.route('**/css/layout.css',route=>route.fulfill({status:200,contentType:'text/css',body:css}));
   await ctx.route('**/*',route=>{
    if(route.request().url()===origin+'/')return route.fulfill({status:200,contentType:'text/html',body:markup});
-   return route.continue();
+   return route.fallback();
   });
   try{
    const page=await ctx.newPage();await page.goto(origin+'/',{waitUntil:'networkidle'});
