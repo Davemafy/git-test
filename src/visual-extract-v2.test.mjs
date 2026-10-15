@@ -35,6 +35,7 @@ test('measured graph represents actual alignment and occlusion, not artificial d
 test('large clickable product cards are outlined, not filled giant action blocks',()=>{
  const src=sample(1440,[n('product-tile','card',{x:120,y:450,w:700,h:600}),
   n('checkout','control',{x:160,y:1080,w:140,h:48})]);
+ src.viewport.height=1400; // the test is about visual roles, not viewport clipping
  const svg=wireframeSvg(src,{maxHeight:1400});
  assert.match(svg,/x="120" y="450" width="700" height="600" fill="none" stroke="#aaa"/);
  assert.match(svg,/x="160" y="1080" width="140" height="48" fill="#4f4f4f"/);
