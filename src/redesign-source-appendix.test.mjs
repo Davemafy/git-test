@@ -28,7 +28,7 @@ test('an authored composition stays intact while source evidence is grouped in a
  assert.ok(rendered.includes('Secondary research details'));
  assert.ok(rendered.includes('A source quote with real text'));
  assert.ok(rendered.includes('https://example.org/check'));
- assert.equal((rendered.match(/<h1\\b/g)||[]).length,1);
+ assert.equal((rendered.match(/<h1\b/g)||[]).length,1);
  assert.equal((rendered.match(/class="own-stage"/g)||[]).length,1);
 });
 test('a missing lead or selected opening proof cannot be hidden in supplementary details',()=>{
