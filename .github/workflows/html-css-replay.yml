@@ -1,0 +1,24 @@
+name: Sloppertizer · browser-native HTML CSS replay
+on:
+  push:
+    branches: [sloppertizer-visual-v2-benchmark-20261015]
+    paths:
+      - 'src/source-html-css*'
+      - 'scripts/source-html-css-browser-test.mjs'
+      - '.github/workflows/html-css-replay.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --test src/source-html-css.test.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/source-html-css-browser-test.mjs
