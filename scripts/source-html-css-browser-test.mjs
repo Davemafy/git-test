@@ -47,6 +47,7 @@ try{
    const original=await page.screenshot({type:'png',animations:'disabled'});
    const out=path.join(tmp,v.name);
    const info=await exportBrowserHtmlCss(page,out);
+   console.log('STYLESHEET COVERAGE',v.name,JSON.stringify(info.stylesheetCoverage));
    assert.equal(info.stylesheetCoverage.cssCaptured,info.stylesheetCoverage.cssDiscovered);
    assert.equal(info.stylesheetCoverage.cssDiscovered>=2,true);
    const html=await fs.readFile(path.join(out,'replay.html'),'utf8');
