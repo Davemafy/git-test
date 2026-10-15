@@ -1,0 +1,42 @@
+name: Sloppertizer Lite public lab
+on:
+  push:
+    branches: [sloppertizer-lite-lab-20261015]
+    paths: ['sloppertizer-lite/**', '.github/workflows/sloppertizer-lite.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sloppertizer-lite-public
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install public lab dependencies
+        working-directory: sloppertizer-lite
+        run: npm install --no-audit --no-fund
+      - name: Test synthetic engine contracts
+        working-directory: sloppertizer-lite
+        run: npm test
+      - name: Install Chromium
+        working-directory: sloppertizer-lite
+        run: npx playwright install --with-deps chromium
+      - name: Render responsive screenshot tests
+        working-directory: sloppertizer-lite
+        run: npm run visual
+      - name: Upload public synthetic screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sloppertizer-lite-screenshots
+          path: sloppertizer-lite/artifacts/*.png
+          retention-days: 1
+          if-no-files-found: ignore
