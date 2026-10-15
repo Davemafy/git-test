@@ -27,7 +27,12 @@ const styles=[
  'fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','textAlign',
  'textTransform','color'
 ];
-const copyStyles=src=>Object.fromEntries(styles.filter(k=>src?.[k]!==undefined&&src[k]!==null).map(k=>[k,String(src[k]).slice(0,360)]));
+const copyStyles=src=>Object.fromEntries(styles.filter(k=>src?.[k]!==undefined&&src[k]!==null).map(k=>{
+ let value=String(src[k]);
+ // Keep actual layout/paint parameters but do not export raw asset URLs.
+ if(k==='backgroundImage')value=value.replace(/url\(\s*(?:"[^"]*"|'[^']*'|[^)]*)\s*\)/gi,'url([captured-asset])');
+ return [k,value.slice(0,360)];
+}));
 function descriptionKind(node){
  const t=String(node.tag||'').toLowerCase(),role=node.role;
  if(/^h[1-6]$/.test(t)||role==='heading')return 'heading';
