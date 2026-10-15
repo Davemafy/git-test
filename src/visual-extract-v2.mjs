@@ -66,7 +66,10 @@ export function captureStructuralViewport({maxHeight=3000,maxElements=620}={}) {
   if(kind==='link'&&(box.w<38||box.h<14||el.closest('h1,h2,h3,h4,h5,h6')))continue;
   if(kind==='text'&&box.w<25)continue;
   if(kind==='media'&&(box.w<55||box.h<45||el.matches('picture')&&el.querySelector('img')))continue;
-  const role=kind||(region?'region':'art'),tag=el.tagName.toLowerCase();
+  // A whole product tile may be one semantic button. It is a card surface,
+  // not a giant CTA; keep its inner media/text legible in the mockup.
+  const compositeControl=kind==='control'&&box.w>150&&box.h>140;
+  const role=compositeControl?'card':kind||(region?'region':'art'),tag=el.tagName.toLowerCase();
   const label=kind&&['heading','text','control','link'].includes(kind)?
    String(el.textContent||el.getAttribute('aria-label')||'').trim().replace(/\s+/g,' ').slice(0,350):'';
   const media=kind==='media'?String(el.currentSrc||el.getAttribute('src')||el.getAttribute('poster')||el.getAttribute('aria-label')||tag):'';
@@ -78,7 +81,7 @@ export function captureStructuralViewport({maxHeight=3000,maxElements=620}={}) {
    objectFit:s.objectFit,borderRadius:s.borderRadius});
  }
  const counts=new Map();for(const n of nodes)counts.set(n.key,(counts.get(n.key)||0)+1);
- for(const n of nodes)n.pairable=counts.get(n.key)===1&&['heading','text','media','control','link'].includes(n.type);
+ for(const n of nodes)n.pairable=counts.get(n.key)===1&&['heading','text','media','control','card','link'].includes(n.type);
  return {version:2,sourceQuality:'unreviewed-browser-measurement',
    viewport:{width:W,height:H,documentHeight:document.documentElement.scrollHeight},
    overlayExclusions,nodes};
@@ -112,10 +115,11 @@ export function wireframeSvg(extract,{maxHeight=3000}={}){
   if(width<=1||height<=1)return;
   html.push('<rect x="'+x+'" y="'+y+'" width="'+width+'" height="'+height+'" '+attrs+'/>');
  };
- const weights={region:0,art:1,media:2,text:3,heading:4,link:5,control:6};
+ const weights={region:0,card:1,art:2,media:3,text:4,heading:5,link:6,control:7};
  for(const n of [...extract.nodes].sort((a,b)=>(weights[a.type]??9)-(weights[b.type]??9)||a.paintOrder-b.paintOrder)){
   const b=n.box;if(b.y>=H||b.y+b.h<=0)continue;
   if(n.type==='region'){rect(b,'fill="none" stroke="#dedede" stroke-width="1"');continue}
+  if(n.type==='card'){rect(b,'fill="none" stroke="#aaa" stroke-width="1.5"');continue}
   if(n.type==='art'){rect(b,'fill="#e0e0e0" stroke="#bcbcbc" stroke-width="1"');continue}
   if(n.type==='media'){
    rect(b,'fill="#bdbdbd" stroke="#777" stroke-width="1"');
