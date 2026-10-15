@@ -1,0 +1,39 @@
+name: Sloppertizer · V2 live design extraction benchmark
+on:
+  push:
+    branches: [sloppertizer-visual-v2-benchmark-20261015]
+    paths:
+      - 'src/visual-extract-v2*'
+      - 'scripts/visual-extract-fidelity.mjs'
+      - 'package.json'
+      - '.github/workflows/visual-extract-v2.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-reference-capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install bounded research dependencies
+        run: npm install --no-audit --no-fund
+      - name: Test geometry and pairing implementation
+        run: npm test
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Extract desktop and mobile compositions from world-class sources
+        run: npm run benchmark
+      - name: Archive measured source, wireframes and responsive correspondence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exceptional-reference-extract-v2
+          path: research/structural-fidelity-output/
+          retention-days: 2
+          if-no-files-found: warn
