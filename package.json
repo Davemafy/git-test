@@ -1,0 +1,13 @@
+{
+  "name": "sloppertizer-visual-fidelity-research",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test src/visual-extract-v2.test.mjs",
+    "benchmark": "node scripts/visual-extract-fidelity.mjs linear stripe aesop"
+  },
+  "dependencies": {
+    "playwright": "1.59.1",
+    "sharp": "^0.34.4"
+  }
+}
