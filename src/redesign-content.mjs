@@ -235,6 +235,27 @@ export function normalizeContentTemplate(template,evidence=null){
  }
  return html;
 }
+
+/**
+ * Place the actual observed primary link beside the lead headline. The model
+ * frequently leaves it in the footer's unplaced-link collection, producing
+ * a technically complete but unusable hero. Never invent the link.
+ */
+export function ensureOpeningPrimaryAction(template,evidence,composition){
+ const id=composition?.primaryLinkId;
+ if(!/^l\d+$/.test(id||'')||!(evidence.links||[]).some(x=>x.id===id))return template;
+ const opening=String(template).match(/<([a-z][a-z0-9-]*)\b(?=[^>]*\bdata-composition\s*=\s*["']opening["'])[^>]*>/i);
+ if(!opening)return template;
+ const reg=new RegExp('<a\\b(?=[^>]*\\bdata-link\\s*=\\s*["\\x27]'+id+'["\\x27])[^>]*>[\\s\\S]*?<\\/a>','gi');
+ let html=String(template).replace(reg,'');
+ const match=html.match(/<([a-z][a-z0-9-]*)\b(?=[^>]*\bdata-composition\s*=\s*["']opening["'])[^>]*>/i);
+ if(!match)return template;
+ const start=match.index+match[0].length,leadEnd=html.indexOf('</h1>',start);
+ const containerEnd=html.indexOf('</'+match[1]+'>',start);
+ const insertion=leadEnd!==-1&&(containerEnd===-1||leadEnd<containerEnd)?leadEnd+5:start;
+ return html.slice(0,insertion)+'<div class="hero-actions source-primary-action"><a class="observed-action" data-link="'+id+'"></a></div>'+html.slice(insertion);
+}
+
 export function focalObservedAsset(e){
  const items=(e.assets||[]).filter(x=>x.important);
  const eligible=items.filter(x=>(x.observedBox?.width||0)>=280&&(x.observedBox?.height||0)>=140);
