@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/redesign-content.mjs'
       - 'src/redesign-source-appendix.test.mjs'
+      - 'src/redesign-readability-repair*'
       - 'src/url-redesign.mjs'
       - '.github/workflows/redesign-quality-regression.yml'
   workflow_dispatch:
@@ -23,4 +24,4 @@ jobs:
         run: |
           node --check src/url-redesign.mjs
           node --check src/redesign-content.mjs
-          node --test src/redesign-source-appendix.test.mjs
+          node --test src/redesign-source-appendix.test.mjs src/redesign-readability-repair.test.mjs
