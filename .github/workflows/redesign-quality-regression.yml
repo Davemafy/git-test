@@ -1,0 +1,26 @@
+name: Sloppertizer · output quality regression
+on:
+  push:
+    branches: [sloppertizer-visual-v2-benchmark-20261015]
+    paths:
+      - 'src/redesign-content.mjs'
+      - 'src/redesign-source-appendix.test.mjs'
+      - 'src/url-redesign.mjs'
+      - '.github/workflows/redesign-quality-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify pipeline syntax and source slot coverage behavior
+        run: |
+          node --check src/url-redesign.mjs
+          node --check src/redesign-content.mjs
+          node --test src/redesign-source-appendix.test.mjs
