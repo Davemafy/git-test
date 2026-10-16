@@ -235,12 +235,29 @@ export function normalizeContentTemplate(template,evidence=null){
  }
  return html;
 }
+export function focalObservedAsset(e){
+ const items=(e.assets||[]).filter(x=>x.important);
+ const eligible=items.filter(x=>(x.observedBox?.width||0)>=280&&(x.observedBox?.height||0)>=140);
+ if(!eligible.length)return items.length===1?items[0]:null;
+ const score=a=>{
+  const b=a.observedBox,area=Math.min(b.width*b.height,1100*850);
+  const distance=Math.max(0,b.y-900);
+  return area/(1+distance/1400);
+ };
+ return [...eligible].sort((a,b)=>score(b)-score(a))[0]||null;
+}
+
 export function compileContentTemplate(template,e){
  if(typeof template!=='string')throw Error('The model omitted its HTML composition.');
  const content=new Map(e.preservedContent.map(x=>[x.id,x])),links=new Map(e.links.map(x=>[x.id,x])),assets=new Map(e.assets.map(x=>[x.id,x]));
  let html=normalizeContentTemplate(template,e);
- html=html.replace(/<(figure|div|section)\b([^>]*\bdata-assetset\s*=\s*["']all["'][^>]*)>[\s\S]*?<\/\1>/gi,(match,tag,attrs)=>
-  '<'+tag+attrs+'>'+e.assets.filter(x=>x.important).map(x=>'<img class="observed-asset" src="'+escape(x.src)+'" alt="'+escape(x.alt)+'">').join('')+'</'+tag+'>');
+ const focal=focalObservedAsset(e);
+ html=html.replace(/<(figure|div|section)\b([^>]*\bdata-assetset\s*=\s*["'](all|hero|remaining)["'][^>]*)>[\s\S]*?<\/\1>/gi,(match,tag,attrs,kind)=>{
+  const items=(e.assets||[]).filter(x=>x.important).filter(x=>
+   kind==='all'||(kind==='hero'&&x.id===focal?.id)||(kind==='remaining'&&x.id!==focal?.id));
+  return '<'+tag+attrs+'>'+items.map(x=>'<img class="observed-asset" data-asset-id="'+x.id+
+   '" src="'+escape(x.src)+'" alt="'+escape(x.alt)+'">').join('')+'</'+tag+'>';
+ });
  html=html.replace(/<(h1|h2|span)\b([^>]*\bdata-title\s*=\s*["']page["'][^>]*)>[\s\S]*?<\/\1>/gi,(match,tag,attrs)=>'<'+tag+attrs+'>'+escape(e.title)+'</'+tag+'>');
  html=html.replace(/\b(href|src)\s*=\s*(["'])(link|asset):([la]\d+)\2/gi,(match,attr,quote,kind,id)=>{
   const item=(kind==='link'?links:assets).get(id);if(!item)throw Error('The layout referenced an unknown source item.');
