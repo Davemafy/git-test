@@ -43,7 +43,7 @@ test('a page exceeding the recovered-source budget fails without generating a wa
 });
 
 test('observed large focal imagery is separated from logos and secondary screenshots',()=>{
- const e={...evidence,assets:[
+ const e={...evidence,preservedContent:evidence.preservedContent.slice(0,2),assets:[
   {id:'a0',src:'https://example.org/logo.png',alt:'Logo',important:true,observedBox:{x:20,y:20,width:150,height:50}},
   {id:'a1',src:'https://example.org/scene.png',alt:'Original product scene',important:true,observedBox:{x:620,y:160,width:720,height:560}},
   {id:'a2',src:'https://example.org/detail.png',alt:'Original detail',important:true,observedBox:{x:100,y:1550,width:550,height:400}}
