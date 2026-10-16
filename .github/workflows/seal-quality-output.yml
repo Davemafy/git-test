@@ -19,7 +19,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Create and render actual quality candidate
         env:
-          SMOKE_EXPECTED_REVISION: ba5c43b4b7d85eaa5b4b3ddf0a7b59bd5b0d6fa5
+          SMOKE_EXPECTED_REVISION: 64018219c2dc09e3706e17a8da80178812e2c884
           BENCHMARK_OUT: seal-quality-output
         run: node scripts/seal-quality-live-smoke.mjs
       - uses: actions/upload-artifact@v4
