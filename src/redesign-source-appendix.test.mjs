@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {compileContentTemplate,reconcileAuthoredSourceCoverage,focalObservedAsset} from './redesign-content.mjs';
+import {compileContentTemplate,reconcileAuthoredSourceCoverage,focalObservedAsset,ensureOpeningPrimaryAction} from './redesign-content.mjs';
 
 const evidence={
  title:'Sample',sourceUrl:'https://example.org/',lang:'en',
@@ -67,4 +67,17 @@ test('a page without an observed hero-sized asset cannot invent a hero screensho
   {id:'a1',src:'https://example.org/icon2.png',alt:'Icon',important:true,observedBox:{x:60,y:0,width:48,height:48}}
  ]};
  assert.equal(focalObservedAsset(e),null);
+});
+
+test('the actual source CTA moves from footer into the authored opening without duplication',()=>{
+ const template=authored.replace('<a data-link="l0"></a>','').replace('</footer>','<a data-link="l0"></a></footer>');
+ const corrected=ensureOpeningPrimaryAction(template,evidence,{primaryLinkId:'l0'});
+ const opening=corrected.match(/<section data-composition="opening"[^>]*>([\s\S]*?)<\/section>/)?.[1]||'';
+ assert.match(opening,/data-link="l0"/);
+ assert.equal((corrected.match(/data-link="l0"/g)||[]).length,1);
+ const withCopy=compileContentTemplate(reconcileAuthoredSourceCoverage(corrected,evidence,
+  {code:'TEMPLATE_COVERAGE',missingContent:['c2','c3','c4','c5'],missingLinks:[],missingAssets:[]},
+  {protectedIds:['c0','c1']}),evidence);
+ assert.ok(withCopy.includes('https://example.org/check'));
+ assert.equal((withCopy.match(/data-link="l0"/g)||[]).length,1);
 });
