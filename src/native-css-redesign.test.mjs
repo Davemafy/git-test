@@ -13,7 +13,7 @@ test('source-native polish preserves source-built objects and author CSS rather 
  assert.match(next,/<div class="notice-card">Real source object<\/div>/);
  assert.match(next,/<div class="source-card">Official reference<\/div>/);
  assert.match(next,/<style>\.hero\{display:grid\}/);
- assert.ok(next.indexOf('.notice-card{transform:rotate(-3deg)}')<next.indexOf('.notice-card{transform:rotate(-6deg)}'));
+ assert.ok(next.indexOf('.notice-card{transform:rotate(-3deg)}')<next.indexOf('.notice-card{transform:rotate(-6deg)'));
  assert.equal((next.match(/<h1>/g)||[]).length,1);
 });
 test('model receives only actual source selectors rather than text fragments',()=>{
