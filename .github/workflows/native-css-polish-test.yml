@@ -1,0 +1,16 @@
+name: Sloppertizer · native CSS polish integrity
+on:
+  push:
+    branches: [sloppertizer-visual-v2-benchmark-20261015]
+    paths: ['.github/workflows/native-css-polish-test.yml','src/native-css-redesign*']
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test src/native-css-redesign.test.mjs
