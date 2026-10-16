@@ -1,0 +1,16 @@
+name: Sloppertizer · nested CSS design context
+on:
+  push:
+    branches: [sloppertizer-visual-v2-benchmark-20261015]
+    paths: ['.github/workflows/redesign-css-blueprint-test.yml','src/redesign-css-blueprint.mjs','src/redesign-css-blueprint.test.mjs']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test src/redesign-css-blueprint.test.mjs
