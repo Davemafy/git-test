@@ -17,7 +17,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Generate SEAL native-source redesign
         env:
-          SMOKE_EXPECTED_REVISION: f1c99d94447d34a1fdb04eae96ce769ccd5a9730
+          SMOKE_EXPECTED_REVISION: 1f5528b613e8e434ec9e53ced3e1d4bd9637ac5f
           BENCHMARK_OUT: native-output
         run: node scripts/seal-native-live-smoke.mjs
       - uses: actions/upload-artifact@v4
