@@ -3,11 +3,12 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {loadRedesignEvidence} from './redesign-evidence.mjs';
 import {researchDirectedRedesign} from './redesign-intelligence.mjs';
-import {layoutContentPlan,sourceContentSections,compileContentTemplate,normalizeContentTemplate,restoreMissingRenderedSource,completeObservedSourceSlots,reconcileAuthoredSourceCoverage,buildCompleteObservedLayout} from './redesign-content.mjs';
+import {layoutContentPlan,sourceContentSections,compileContentTemplate,normalizeContentTemplate,restoreMissingRenderedSource,completeObservedSourceSlots,reconcileAuthoredSourceCoverage,ensureOpeningPrimaryAction,buildCompleteObservedLayout} from './redesign-content.mjs';
 import {redesignProvider,requestRedesignJson} from './redesign-model.mjs';
 import {validateRedesignSite,normalizeRedesignCss,appendRedesignRepairCss,assembleRedesignDocument,inspectRedesign,redesignViews} from './redesign-browser.mjs';
 import {measuredContrastPatch} from './redesign-contrast-repair.mjs';
 import {measuredOverflowPatch} from './redesign-overflow-repair.mjs';
+import {measuredReadabilityPatch} from './redesign-readability-repair.mjs';
 import {bundleObservedAssets} from './site-asset-bundle.mjs';
 import {judgeRedesignVisual,redesignVisualReviewConfig} from './redesign-visual-review.mjs';
 import {referenceFallbackStyles} from './redesign-visual-grammars.mjs';
@@ -177,10 +178,11 @@ export async function redesignReconstruction({captureDir,siteDir,report=null,dir
  // research; the LLM implements that specification rather than setting taste.
  await onProgress({phase:'reasoning',message:'Mapping source hierarchy and research-backed design constraints'});
  // Research-only marker enables same-engine comparison; ordinary jobs unchanged.
- const marker='[[sloppertizer-pilot20]]',measuredMarker='[[sloppertizer-measured3]]';
+ const marker='[[sloppertizer-pilot20]]',measuredMarker='[[sloppertizer-measured3]]',qualityMarker='[[sloppertizer-quality]]';
+ const qualityMode=/^(1|true)$/i.test(env.SLOPPERTIZER_REDESIGN_QUALITY_MODE||'')||String(direction||'').includes(qualityMarker);
  const measuredPilot=String(direction||'').includes(measuredMarker);
  const referencePilot=!measuredPilot&&String(direction||'').includes(marker);
- const cleanDirection=String(direction||'').replaceAll(marker,'').replaceAll(measuredMarker,'').trim();
+ const cleanDirection=String(direction||'').replaceAll(marker,'').replaceAll(measuredMarker,'').replaceAll(qualityMarker,'').trim();
  const {design:researchDesign,brief:designBrief}=await researchDirectedRedesign(evidence,{direction:cleanDirection,referencePilot,measuredPilot});
  const design=validateDirection(researchDesign,evidence,{requireComposition:true});
  await json(path.join(work,'design-direction.json'),{...design,
@@ -231,6 +233,7 @@ export async function redesignReconstruction({captureDir,siteDir,report=null,dir
   throw Object.assign(Error('The source composition exceeds the code-model context.'),{code:'CONTENT_BUDGET'});
  let generatedHtml=await ask({prompt:htmlPrompt,maxTokens:Math.min(2800,cfg.budget.outputTokens),onResponse:r=>json(path.join(work,'html-response.json'),r)});
  let template=normalizeContentTemplate(generatedHtml.data.html,evidence),compiledHtml,templateOrigin='model-authored';
+ if(qualityMode)template=ensureOpeningPrimaryAction(template,evidence,design.composition);
  try{compiledHtml=compileContentTemplate(template,evidence)}catch(error){
   if(error.code!=='TEMPLATE_COVERAGE')throw error;
   const completed=completeObservedSourceSlots(template,evidence,error,{maxSlots:4});
@@ -244,7 +247,7 @@ export async function redesignReconstruction({captureDir,siteDir,report=null,dir
     error=completionError;
    }
   }
-  if(!compiledHtml){
+  if(!compiledHtml&&qualityMode){
    // Keep the model's authored hero, visual objects and chosen hierarchy;
    // store supplementary original content in an accessible disclosure rather
    // than flatten the entire site into equally weighted source sections.
@@ -261,7 +264,7 @@ export async function redesignReconstruction({captureDir,siteDir,report=null,dir
     }
    }
   }
-  if(!compiledHtml && /^(1|true)$/i.test(env.SLOPPERTIZER_ALLOW_SOURCE_WATERFALL||'') ){
+  if(!compiledHtml && (!qualityMode||/^(1|true)$/i.test(env.SLOPPERTIZER_ALLOW_SOURCE_WATERFALL||'')) ){
    // A small-context model may omit dozens of otherwise immutable source IDs.
    // Do NOT make it rewrite the entire page with yet another expensive prompt.
    // Instead create a complete, heading-led source composition and let the CSS
@@ -282,9 +285,11 @@ export async function redesignReconstruction({captureDir,siteDir,report=null,dir
    await onProgress({phase:'generating',message:'Completing a structurally incomplete source composition without flattening the design'});
    const corrected=await ask({prompt:'Complete only missing source slots in this HTML without changing its composition, classes or existing elements. Return JSON {html:ENTIRE_CORRECTED_BODY_FRAGMENT}. Add missing content with semantic data-content slots, missing links individually or in ONE visible footer data-linkset="unplaced", and missing assets via <figure data-assetset="all" class="source-media"></figure> INSIDE main. Never use data-linkset="all" or repeat existing copy/directories. Returning unchanged HTML fails.\nMISSING:'+JSON.stringify({content:error.missingContent,links:error.missingLinks,assets:error.missingAssets})+'\nCONTENT PLAN:'+codeSource+'\nCURRENT TEMPLATE:'+template,
     maxTokens:Math.min(2800,cfg.budget.outputTokens),onResponse:r=>json(path.join(work,'template-completion-response.json'),r)});
-   template=normalizeContentTemplate(corrected.data.html,evidence);compiledHtml=compileContentTemplate(template,evidence);
+   template=normalizeContentTemplate(corrected.data.html,evidence);
+   if(qualityMode)template=ensureOpeningPrimaryAction(template,evidence,design.composition);
+   compiledHtml=compileContentTemplate(template,evidence);
   }
-  if(templateOrigin==='deterministic-complete-source-fallback' && !/^(1|true)$/i.test(env.SLOPPERTIZER_ALLOW_SOURCE_WATERFALL||''))
+  if(qualityMode&&templateOrigin==='deterministic-complete-source-fallback' && !/^(1|true)$/i.test(env.SLOPPERTIZER_ALLOW_SOURCE_WATERFALL||''))
    throw Object.assign(Error('Source waterfall fallback is disabled; no visually unreviewed generic layout is delivered.'),{code:'VISUAL_COMPOSITION_FAILED'});
  }
  const cssModel=cssModelForStage(env,cfg);
@@ -348,6 +353,23 @@ export async function redesignReconstruction({captureDir,siteDir,report=null,dir
  let qa=await inspectRedesign(root,evidence,{composition:design.composition}),initialQA=qa;
  await json(path.join(work,'initial-qa.json'),qa);
  const repairs=[];
+ const measuredProse=measuredReadabilityPatch(qa);
+ if(measuredProse.css){
+  const proposed=validateRedesignSite({...site,css:site.css+'\n/* Browser-measured reading repair */\n'+measuredProse.css},evidence);
+  const trial=path.join(work,'measured-reading');
+  await write(trial,proposed);
+  const checked=await inspectRedesign(trial,evidence,{composition:design.composition});
+  const relevant=state=>Object.values(state.viewports).reduce((n,row)=>
+   n+row.issues.filter(issue=>['excessive-line-length','unreadable-typography'].includes(issue)).length,0);
+  const noNewIssues=Object.entries(checked.viewports).every(([name,row])=>
+   row.issues.every(issue=>qa.viewports[name].issues.includes(issue)));
+  const accepted=relevant(checked)<relevant(qa)&&noNewIssues;
+  repairs.push({origin:'browser-measured-reading',accepted,changes:measuredProse.changes,
+   before:relevant(qa),after:relevant(checked)});
+  await json(path.join(trial,'qa.json'),checked);
+  if(accepted){site=proposed;await write(root,site);
+   qa=await inspectRedesign(root,evidence,{composition:design.composition})}
+ }
  // Missing source copy and links are integrity failures, not model design choices.
  // Restore a small measured set directly from trusted capture evidence before
  // asking the model to redesign structurally correct content again.
@@ -451,7 +473,9 @@ export async function redesignReconstruction({captureDir,siteDir,report=null,dir
     '\nEXISTING ELEMENT SELECTORS:'+JSON.stringify(inventory)+'\nCURRENT CSS:'+site.css);
   try{
    const response=await ask({prompt:repairPrompt,maxTokens:needsMarkup?2800:1000,onResponse:r=>json(path.join(work,'repair-response-'+attempt+'.json'),r)});
-   const nextTemplate=needsMarkup?normalizeContentTemplate(response.data.html,evidence):template;
+   const nextTemplate=needsMarkup?(qualityMode?
+    ensureOpeningPrimaryAction(normalizeContentTemplate(response.data.html,evidence),evidence,design.composition):
+    normalizeContentTemplate(response.data.html,evidence)):template;
    const patch=needsMarkup?{html:compileContentTemplate(nextTemplate,evidence)}:{css:appendRedesignRepairCss(site.css,response.data.css,evidence)};
    const next=validateRedesignSite({...site,...patch},evidence),trial=path.join(work,'repair-'+attempt);
    await write(trial,next);const checked=await inspectRedesign(trial,evidence,{composition:design.composition});
@@ -468,7 +492,7 @@ export async function redesignReconstruction({captureDir,siteDir,report=null,dir
  await recoverObservedSource();
  await json(path.join(work,'repairs.json'),repairs);await json(path.join(work,'final-qa.json'),qa);
  if(qa.status!=='passed')throw Object.assign(Error('The redesign still has browser defects after bounded repair: '+
-  [...new Set(Object.values(qa.viewports).flatMap(x=>x.issues))].join(', ')+'. No result was accepted.'),{code:'BROWSER_VERIFICATION_FAILED',diagnostics:{viewports:Object.fromEntries(Object.entries(qa.viewports).map(([name,row])=>[name,{width:row.width,issues:row.issues,headings:row.headings,tinyText:row.tinyText.slice(0,10),openingFailures:row.openingFailures.slice(0,10),contrast:row.contrast.slice(0,8),missingContent:row.missingContent,missingLinks:row.missingLinks,documentWidth:row.documentWidth}]))}});
+  [...new Set(Object.values(qa.viewports).flatMap(x=>x.issues))].join(', ')+'. No result was accepted.'),{code:'BROWSER_VERIFICATION_FAILED',diagnostics:{viewports:Object.fromEntries(Object.entries(qa.viewports).map(([name,row])=>[name,{width:row.width,issues:row.issues,headings:row.headings,tinyText:row.tinyText.slice(0,10),narrowColumns:row.narrowColumns.slice(0,10),wideProse:row.wideProse.slice(0,10),openingFailures:row.openingFailures.slice(0,10),contrast:row.contrast.slice(0,8),missingContent:row.missingContent,missingLinks:row.missingLinks,documentWidth:row.documentWidth}]))}});
  await onProgress({phase:'packaging',message:'Bundling source, observed assets and verification evidence'});
  // Reuse the guarded image/font bundler. Rendering after bundling verifies export resources.
  const document=await fs.readFile(path.join(root,'index.html'),'utf8');
